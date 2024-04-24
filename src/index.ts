@@ -1,4 +1,4 @@
-import { computePosition, flip, shift } from "@floating-ui/dom";
+import { computePosition, flip, shift, autoUpdate } from "@floating-ui/dom";
 import { createFocusTrap } from "focus-trap";
 import { marked } from "marked";
 
@@ -43,6 +43,8 @@ const config: WidgetConfig = {
   openOnLoad: false,
   ...(window as any).buildShipChatWidget?.config,
 };
+
+let cleanup = () => {};
 
 async function init() {
   const styleElement = document.createElement("style");
@@ -113,14 +115,16 @@ function open(e: Event) {
   }
 
   const target = (e?.target as HTMLElement) || document.body;
-  computePosition(target, containerElement, {
-    placement: "top-start",
-    middleware: [flip(), shift({ crossAxis: true, padding: 8 })],
-    strategy: "fixed",
-  }).then(({ x, y }) => {
-    Object.assign(containerElement.style, {
-      left: `${x}px`,
-      top: `${y}px`,
+  cleanup = autoUpdate(target, containerElement, () => {
+    computePosition(target, containerElement, {
+      placement: "top-start",
+      middleware: [flip(), shift({ crossAxis: true, padding: 8 })],
+      strategy: "fixed",
+    }).then(({ x, y }) => {
+      Object.assign(containerElement.style, {
+        left: `${x}px`,
+        top: `${y}px`,
+      });
     });
   });
 
@@ -141,8 +145,11 @@ function close() {
   trap.deactivate();
 
   containerElement.innerHTML = "";
+
   containerElement.remove();
   optionalBackdrop.remove();
+  cleanup();
+  cleanup = () => {};
 }
 
 async function createNewMessageEntry(
