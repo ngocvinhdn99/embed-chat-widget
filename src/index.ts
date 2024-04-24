@@ -227,6 +227,8 @@ const handleStreamedResponse = async (res: Response) => {
     return;
   }
 
+  const threadIdFromHeader = res.headers.get("x-thread-id");
+
   const reader = res.body.getReader();
   let responseMessage = "";
   let responseThreadId = "";
@@ -261,7 +263,9 @@ const handleStreamedResponse = async (res: Response) => {
   }
 
   config.threadId =
-    config.threadId ?? (responseThreadId !== "" ? responseThreadId : null);
+    config.threadId ??
+    threadIdFromHeader ?? // If the threadId isn't set, use the one from the header
+    (responseThreadId !== "" ? responseThreadId : null); // If the threadId isn't set and one isn't included in the header, use the one from the response
 };
 
 async function submit(e: Event) {
