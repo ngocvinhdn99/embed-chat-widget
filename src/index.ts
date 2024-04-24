@@ -13,7 +13,7 @@ const WIDGET_THINKING_BUBBLE_ID = "buildship-chat-widget__thinking_bubble";
 
 export type WidgetConfig = {
   url: string;
-  threadId: string | undefined;
+  threadId: string | null;
   responseIsAStream: boolean;
   user: Record<any, any>;
   widgetTitle: string;
@@ -33,7 +33,7 @@ renderer.link = (href, title, text) => {
 
 const config: WidgetConfig = {
   url: "",
-  threadId: undefined,
+  threadId: null,
   responseIsAStream: false,
   user: {},
   widgetTitle: "Chatbot",
@@ -190,7 +190,7 @@ const handleStandardResponse = async (res: Response) => {
     }
 
     await createNewMessageEntry(responseMessage, Date.now(), "system");
-    config.threadId = config.threadId ?? responseThreadId;
+    config.threadId = config.threadId ?? responseThreadId ?? null;
   } else {
     console.error("BuildShip Chat Widget: Server error", res);
     if (!config.disableErrorAlert)
@@ -261,7 +261,7 @@ const handleStreamedResponse = async (res: Response) => {
   }
 
   config.threadId =
-    config.threadId ?? (responseThreadId !== "" ? responseThreadId : undefined);
+    config.threadId ?? (responseThreadId !== "" ? responseThreadId : null);
 };
 
 async function submit(e: Event) {
