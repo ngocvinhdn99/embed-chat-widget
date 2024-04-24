@@ -1,4 +1,4 @@
-import { computePosition, flip, shift } from "@floating-ui/dom";
+import { computePosition, flip, shift, autoUpdate } from "@floating-ui/dom";
 import { createFocusTrap } from "focus-trap";
 import { marked } from "marked";
 
@@ -13,7 +13,7 @@ const WIDGET_THINKING_BUBBLE_ID = "buildship-chat-widget__thinking_bubble";
 
 export type WidgetConfig = {
   url: string;
-  threadId: string | undefined;
+  threadId: string | null;
   responseIsAStream: boolean;
   user: Record<any, any>;
   widgetTitle: string;
@@ -33,7 +33,7 @@ renderer.link = (href, title, text) => {
 
 const config: WidgetConfig = {
   url: "",
-  threadId: undefined,
+  threadId: null,
   responseIsAStream: false,
   user: {},
   widgetTitle: "Chatbot",
@@ -43,6 +43,8 @@ const config: WidgetConfig = {
   openOnLoad: false,
   ...(window as any).buildShipChatWidget?.config,
 };
+
+let cleanup = () => {};
 
 async function init() {
   const styleElement = document.createElement("style");
@@ -113,14 +115,16 @@ function open(e: Event) {
   }
 
   const target = (e?.target as HTMLElement) || document.body;
-  computePosition(target, containerElement, {
-    placement: "top-start",
-    middleware: [flip(), shift({ crossAxis: true, padding: 8 })],
-    strategy: "fixed",
-  }).then(({ x, y }) => {
-    Object.assign(containerElement.style, {
-      left: `${x}px`,
-      top: `${y}px`,
+  cleanup = autoUpdate(target, containerElement, () => {
+    computePosition(target, containerElement, {
+      placement: "top-start",
+      middleware: [flip(), shift({ crossAxis: true, padding: 8 })],
+      strategy: "fixed",
+    }).then(({ x, y }) => {
+      Object.assign(containerElement.style, {
+        left: `${x}px`,
+        top: `${y}px`,
+      });
     });
   });
 
@@ -141,8 +145,11 @@ function close() {
   trap.deactivate();
 
   containerElement.innerHTML = "";
+
   containerElement.remove();
   optionalBackdrop.remove();
+  cleanup();
+  cleanup = () => {};
 }
 
 async function createNewMessageEntry(
@@ -190,7 +197,7 @@ const handleStandardResponse = async (res: Response) => {
     }
 
     await createNewMessageEntry(responseMessage, Date.now(), "system");
-    config.threadId = config.threadId ?? responseThreadId;
+    config.threadId = config.threadId ?? responseThreadId ?? null;
   } else {
     console.error("BuildShip Chat Widget: Server error", res);
     if (!config.disableErrorAlert)
@@ -227,6 +234,8 @@ const handleStreamedResponse = async (res: Response) => {
     return;
   }
 
+  const threadIdFromHeader = res.headers.get("x-thread-id");
+
   const reader = res.body.getReader();
   let responseMessage = "";
   let responseThreadId = "";
@@ -261,7 +270,9 @@ const handleStreamedResponse = async (res: Response) => {
   }
 
   config.threadId =
-    config.threadId ?? (responseThreadId !== "" ? responseThreadId : undefined);
+    config.threadId ??
+    threadIdFromHeader ?? // If the threadId isn't set, use the one from the header
+    (responseThreadId !== "" ? responseThreadId : null); // If the threadId isn't set and one isn't included in the header, use the one from the response
 };
 
 async function submit(e: Event) {
