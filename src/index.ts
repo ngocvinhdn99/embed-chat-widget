@@ -187,6 +187,28 @@ const handleStandardResponse = async (res: Response) => {
       threadId: string | undefined;
     } = await res.json();
 
+    if (typeof responseThreadId !== "string") {
+      console.error("BuildShip Chat Widget: Server error", res);
+      if (!config.disableErrorAlert)
+        alert(
+          `Received an OK response but "threadId" was of incompatible type (expected 'string', received '${typeof responseThreadId}'). Please make sure the API response is configured correctly.
+
+You can learn more here: https://github.com/rowyio/buildship-chat-widget?tab=readme-ov-file#connecting-the-widget-to-your-buildship-workflow`
+        );
+      return;
+    }
+
+    if (typeof responseMessage !== "string") {
+      console.error("BuildShip Chat Widget: Server error", res);
+      if (!config.disableErrorAlert)
+        alert(
+          `Received an OK response but "message" was of incompatible type (expected 'string', received '${typeof responseMessage}'). Please make sure the API response is configured correctly.
+
+You can learn more here: https://github.com/rowyio/buildship-chat-widget?tab=readme-ov-file#connecting-the-widget-to-your-buildship-workflow`
+        );
+      return;
+    }
+
     if (!responseMessage && responseMessage !== "") {
       console.error("BuildShip Chat Widget: Server error", res);
       if (!config.disableErrorAlert)
