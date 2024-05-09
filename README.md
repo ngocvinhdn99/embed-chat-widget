@@ -6,7 +6,9 @@ With this powerful AI chat assistant, you can enhance the user experience of you
 
 ## [TRY LIVE DEMO](https://buildship.com/chat-widget/city-advisor)
 
-![AI Chatbot Widget OpenSource - collapsed](https://github.com/rowyio/buildship-chat-widget/assets/307298/c14e4861-b2f7-4a0b-bc68-fae6ef7d9381)
+<!--![AI Chatbot Widget OpenSource - collapsed](https://github.com/rowyio/buildship-chat-widget/assets/307298/c14e4861-b2f7-4a0b-bc68-fae6ef7d9381)
+-->
+https://private-user-images.githubusercontent.com/307298/329221941-95c3f556-9532-498f-bcff-62812cb92c00.mp4?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MTUyNTI1OTUsIm5iZiI6MTcxNTI1MjI5NSwicGF0aCI6Ii8zMDcyOTgvMzI5MjIxOTQxLTk1YzNmNTU2LTk1MzItNDk4Zi1iY2ZmLTYyODEyY2I5MmMwMC5tcDQ_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjQwNTA5JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI0MDUwOVQxMDU4MTVaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT04MzlhOWZkODhiYmEwZDJjOTM5ZmQwOTVlODdjMjJmNWNmY2I2ZTQ4OTNhYmE0MTk2NjMxZThhMGFiZWIzNDc4JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZhY3Rvcl9pZD0wJmtleV9pZD0wJnJlcG9faWQ9MCJ9.8h54SWDxXgVG_L1qM28sp_yur3iN9kZYvUe605NNfNk
 
 ## Getting started
 
