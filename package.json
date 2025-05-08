@@ -28,9 +28,9 @@
   ],
   "module": "dist/index.module.js",
   "scripts": {
-    "build": "node ./generate-widget-html-string && microbundle --define process.env.NODE_ENV=production --css inline",
-    "dev": "node ./generate-widget-html-string && microbundle watch --define process.env.NODE_ENV=production --css inline",
-    "prepare": "node ./generate-widget-html-string && microbundle --define process.env.NODE_ENV=production --css inline"
+    "build": "node ./generate-html-string && microbundle --define process.env.NODE_ENV=production --css inline",
+    "dev": "node ./generate-html-string && microbundle watch --define process.env.NODE_ENV=production --css inline",
+    "prepare": "node ./generate-html-string && microbundle --define process.env.NODE_ENV=production --css inline"
   },
   "devDependencies": {
     "@floating-ui/dom": "^1.6.3",

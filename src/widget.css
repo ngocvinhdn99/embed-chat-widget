@@ -324,3 +324,37 @@
   opacity: 0.5;
   cursor: default;
 }
+
+#chat-widget-toggle__button {
+  position: absolute;
+  bottom: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--buildship-chat-widget-primary-color);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+#chat-widget-toggle__button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+#chat-widget-toggle__button:active {
+  transform: scale(0.95);
+}
+
+/* Show/hide icons based on widget state */
+.chat-widget-toggle__button-open .chat-widget-toggle__icon--chat {
+  display: none !important;
+}
+
+.chat-widget-toggle__button-open .chat-widget-toggle__icon--close {
+  display: block !important;
+}

@@ -2,7 +2,8 @@ import { computePosition, flip, shift, autoUpdate } from "@floating-ui/dom";
 import { createFocusTrap } from "focus-trap";
 import { marked } from "marked";
 
-import { widgetHTML } from "./widgetHtmlString";
+import { widgetHTML } from "./html/widget-string";
+import { buttonHTML } from "./html/button-string";
 import css from "./widget.css";
 
 const WIDGET_BACKDROP_ID = "buildship-chat-widget__backdrop";
@@ -11,9 +12,11 @@ const WIDGET_MESSAGES_HISTORY_CONTAINER_ID =
   "buildship-chat-widget__messages_history";
 const WIDGET_THINKING_BUBBLE_ID = "buildship-chat-widget__thinking_bubble";
 
+let toggleButton: HTMLElement | null;
+
 export type WidgetConfig = {
   url: string;
-  threadId: string | null;
+  conversationId: string | null;
   responseIsAStream: boolean;
   user: Record<any, any>;
   widgetTitle: string;
@@ -21,6 +24,7 @@ export type WidgetConfig = {
   disableErrorAlert: boolean;
   closeOnOutsideClick: boolean;
   openOnLoad: boolean;
+  positionToggleButton: "bottom-left" | "bottom-right";
 };
 
 const renderer = new marked.Renderer();
@@ -32,19 +36,33 @@ renderer.link = (href, title, text) => {
 };
 
 const config: WidgetConfig = {
-  url: "",
-  threadId: null,
-  responseIsAStream: false,
+  url: "https://case.doradora.vn/api/ask/dora",
+  conversationId: null,
+  responseIsAStream: true,
   user: {},
-  widgetTitle: "Chatbot",
+  widgetTitle: "Chatbot by Vinh",
   greetingMessage: null,
+  // greetingMessage: "Hello there! Here's a super long greeting.\n\nJust to see how you'd handle multiple lines and linebreaks.",
   disableErrorAlert: false,
   closeOnOutsideClick: true,
   openOnLoad: false,
+  positionToggleButton: "bottom-right",
   ...(window as any).buildShipChatWidget?.config,
 };
 
 let cleanup = () => {};
+
+function positionToggleButton() {
+  if (!toggleButton) return;
+
+  const position = config.positionToggleButton || "bottom-right";
+  const positionStyles = {
+    "bottom-left": { left: "20px" },
+    "bottom-right": { right: "20px" },
+  };
+
+  Object.assign(toggleButton.style, positionStyles[position]);
+}
 
 async function init() {
   const styleElement = document.createElement("style");
@@ -56,18 +74,35 @@ async function init() {
   // (particularly for the button to be available in the `if (config.openOnLoad)` block below).
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  document
-    .querySelector("[data-buildship-chat-widget-button]")
-    ?.addEventListener("click", open);
+  document.body.innerHTML += buttonHTML;
+
+  toggleButton = document.querySelector("[chat-widget-toggle-button]");
+
+  positionToggleButton();
+
+  toggleButton?.addEventListener("click", open);
 
   if (config.openOnLoad) {
-    const target = document.querySelector(
-      "[data-buildship-chat-widget-button]"
-    );
-    open({ target } as Event);
+    open({ target: toggleButton } as Event);
   }
 }
 window.addEventListener("load", init);
+
+const observer = new MutationObserver(() => {
+  const containerElement = document.getElementById(WIDGET_CONTAINER_ID);
+  const TOGGLE_BUTTON_OPEN_CN = "chat-widget-toggle__button-open";
+
+  if (containerElement) {
+    toggleButton?.classList.add(TOGGLE_BUTTON_OPEN_CN);
+  } else {
+    toggleButton?.classList.remove(TOGGLE_BUTTON_OPEN_CN);
+  }
+});
+
+observer.observe(document.body, {
+  childList: true,
+  subtree: false,
+});
 
 const containerElement = document.createElement("div");
 containerElement.id = WIDGET_CONTAINER_ID;
@@ -181,17 +216,17 @@ const handleStandardResponse = async (res: Response) => {
   if (res.ok) {
     const {
       message: responseMessage,
-      threadId: responseThreadId,
+      conversationId: responseThreadId,
     }: {
       message: string | undefined;
-      threadId: string | undefined;
+      conversationId: string | undefined;
     } = await res.json();
 
     if (typeof responseThreadId !== "string") {
-      console.error("BuildShip Chat Widget: Server error", res);
+      console.error("Doraverse Chat Widget: Server error", res);
       if (!config.disableErrorAlert)
         alert(
-          `Received an OK response but "threadId" was of incompatible type (expected 'string', received '${typeof responseThreadId}'). Please make sure the API response is configured correctly.
+          `Received an OK response but "conversationId" was of incompatible type (expected 'string', received '${typeof responseThreadId}'). Please make sure the API response is configured correctly.
 
 You can learn more here: https://github.com/rowyio/buildship-chat-widget?tab=readme-ov-file#connecting-the-widget-to-your-buildship-workflow`
         );
@@ -199,7 +234,7 @@ You can learn more here: https://github.com/rowyio/buildship-chat-widget?tab=rea
     }
 
     if (typeof responseMessage !== "string") {
-      console.error("BuildShip Chat Widget: Server error", res);
+      console.error("Doraverse Chat Widget: Server error", res);
       if (!config.disableErrorAlert)
         alert(
           `Received an OK response but "message" was of incompatible type (expected 'string', received '${typeof responseMessage}'). Please make sure the API response is configured correctly.
@@ -210,7 +245,7 @@ You can learn more here: https://github.com/rowyio/buildship-chat-widget?tab=rea
     }
 
     if (!responseMessage && responseMessage !== "") {
-      console.error("BuildShip Chat Widget: Server error", res);
+      console.error("Doraverse Chat Widget: Server error", res);
       if (!config.disableErrorAlert)
         alert(
           `Received an OK response but no message was found. Please make sure the API response is configured correctly. You can learn more here:\n\nhttps://github.com/rowyio/buildship-chat-widget?tab=readme-ov-file#connecting-the-widget-to-your-buildship-workflow`
@@ -219,9 +254,9 @@ You can learn more here: https://github.com/rowyio/buildship-chat-widget?tab=rea
     }
 
     await createNewMessageEntry(responseMessage, Date.now(), "system");
-    config.threadId = config.threadId ?? responseThreadId ?? null;
+    config.conversationId = config.conversationId ?? responseThreadId ?? null;
   } else {
-    console.error("BuildShip Chat Widget: Server error", res);
+    console.error("Doraverse Chat Widget: Server error", res);
     if (!config.disableErrorAlert)
       alert(`Could not send message: ${res.statusText}`);
   }
@@ -273,15 +308,15 @@ const handleStreamedResponse = async (res: Response) => {
 
     if (decoded.includes("\x1f")) {
       // If the chunk contains the separator character, that marks the end of the message
-      // and the beginning of the threadId
-      const [message, threadId] = decoded.split("\x1f");
+      // and the beginning of the conversationId
+      const [message, conversationId] = decoded.split("\x1f");
       responseMessage += message;
-      responseThreadId += threadId;
+      responseThreadId += conversationId;
 
       responseMessageComplete = true;
     } else {
       if (responseMessageComplete) {
-        // If the message is complete, the chunk will be part of the threadId
+        // If the message is complete, the chunk will be part of the conversationId
         responseThreadId += decoded;
       } else {
         // If the message is not complete yet, the chunk will be part of the message
@@ -291,10 +326,99 @@ const handleStreamedResponse = async (res: Response) => {
     await streamResponseToMessageEntry(responseMessage, ts, "system");
   }
 
-  config.threadId =
-    config.threadId ??
-    threadIdFromHeader ?? // If the threadId isn't set, use the one from the header
-    (responseThreadId !== "" ? responseThreadId : null); // If the threadId isn't set and one isn't included in the header, use the one from the response
+  config.conversationId =
+    config.conversationId ??
+    threadIdFromHeader ?? // If the conversationId isn't set, use the one from the header
+    (responseThreadId !== "" ? responseThreadId : null); // If the conversationId isn't set and one isn't included in the header, use the one from the response
+};
+
+const parseSSEMessage = (raw: string): Record<string, any> => {
+  const lines = raw.split("\n");
+  const result: Record<string, any> = {};
+  for (const line of lines) {
+    if (line.startsWith("event: ")) {
+      result.event = line.slice(7);
+    } else if (line.startsWith("data: ")) {
+      result.data = line.slice(6);
+    }
+  }
+  return result;
+};
+
+const handleStreamedDoraverseResponse = async (res: Response) => {
+  if (!res.body) {
+    console.error("Doraverse Chat Widget: Streamed response has no body", res);
+    if (!config.disableErrorAlert)
+      alert(
+        `Received a streamed response but no body was found. Please make sure the API response is configured correctly.`
+      );
+    return;
+  }
+
+  const reader = res.body.getReader();
+  let responseMessage = "";
+  let ts = Date.now();
+  let buffer = ""; // Buffer to accumulate partial messages
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done || value === undefined) {
+      break;
+    }
+
+    // Decode and add to buffer
+    buffer += new TextDecoder().decode(value);
+
+    // Process complete messages in buffer
+    const messages = buffer.split("\n\n");
+    buffer = messages.pop() || ""; // Keep the last incomplete chunk in buffer
+
+    for (const message of messages) {
+      if (!message.trim()) continue;
+
+      const parsedMsg = parseSSEMessage(message);
+
+      switch (parsedMsg.event) {
+        case "message":
+          // Skip if no data
+          if (!parsedMsg.data) continue;
+
+          try {
+            const parsedData = JSON.parse(parsedMsg.data);
+
+            if (parsedData.event === "on_run_step") {
+              thinkingBubble.remove();
+            } else if (parsedData.event === "on_message_delta") {
+              // Message content updates
+              const content = parsedData.data?.delta?.content;
+              if (Array.isArray(content) && content.length > 0) {
+                const textContent = content[0];
+                if (textContent.type === "text" && textContent.text) {
+                  responseMessage += textContent.text;
+                  await streamResponseToMessageEntry(
+                    responseMessage,
+                    ts,
+                    "system"
+                  );
+                }
+              }
+            } else if (parsedData.final) {
+              config.conversationId = parsedData?.conversation?.conversationId;
+              await streamResponseToMessageEntry(
+                parsedData?.responseMessage?.text,
+                ts,
+                "system"
+              );
+            }
+          } catch (err) {
+            console.error("Error parsing message data:", err, parsedMsg);
+          }
+          break;
+        default:
+          break;
+      }
+    }
+  }
 };
 
 async function submit(e: Event) {
@@ -302,7 +426,7 @@ async function submit(e: Event) {
   const target = e.target as HTMLFormElement;
 
   if (!config.url) {
-    console.error("BuildShip Chat Widget: No URL provided");
+    console.error("Doraverse Chat Widget: No URL provided");
     if (!config.disableErrorAlert)
       alert("Could not send chat message: No URL provided");
     return;
@@ -319,7 +443,7 @@ async function submit(e: Event) {
   const data = {
     ...config.user,
     message: (target.elements as any).message.value,
-    threadId: config.threadId,
+    conversationId: config.conversationId,
     timestamp: Date.now(),
   };
 
@@ -333,16 +457,16 @@ async function submit(e: Event) {
       headers: requestHeaders,
       body: JSON.stringify(data),
     });
-    thinkingBubble.remove();
+    // thinkingBubble.remove();
 
     if (config.responseIsAStream) {
-      await handleStreamedResponse(response);
+      await handleStreamedDoraverseResponse(response);
     } else {
       await handleStandardResponse(response);
     }
   } catch (e: any) {
     thinkingBubble.remove();
-    console.error("BuildShip Chat Widget:", e);
+    console.error("Doraverse Chat Widget:", e);
     if (!config.disableErrorAlert) {
       alert(`Could not send message: ${e.message}`);
     }
