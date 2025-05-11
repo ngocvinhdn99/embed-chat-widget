@@ -52,7 +52,7 @@
   --buildship-chat-widget-secondary-color-text: #979797;
 
   --buildship-chat-widget-user-message-text-color: #fff;
-  --buildship-chat-widget-user-message-bg-color: #2c91ed;
+  /* --buildship-chat-widget-user-message-bg-color: #2c91ed; */
   --buildship-chat-widget-system-message-text-color: #000;
   --buildship-chat-widget-system-message-bg-color: #e4e4e4;
 }
@@ -68,9 +68,20 @@
   --buildship-chat-widget-secondary-color-text: #818183;
 
   --buildship-chat-widget-user-message-text-color: #fff;
-  --buildship-chat-widget-user-message-bg-color: #2c91ed;
+  /* --buildship-chat-widget-user-message-bg-color: #2c91ed; */
   --buildship-chat-widget-system-message-text-color: #fff;
   --buildship-chat-widget-system-message-bg-color: #424244;
+}
+
+@keyframes slideUpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 #buildship-chat-widget__container {
@@ -85,6 +96,22 @@
   font-family: inherit;
   font-size: 1rem;
   color: var(--buildship-chat-widget-primary-color-text);
+  /* Handle animation slideUpFadeIn */
+  opacity: 0;
+  transform: translateY(40px);
+  transition: none;
+  /*  */
+}
+
+#buildship-chat-widget__container.chat-widget-animate-in {
+  animation: slideUpFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@media (max-width: 600px) {
+  #buildship-chat-widget__container {
+    width: 90vw;
+    height: 80vh;
+  }
 }
 #buildship-chat-widget__container * {
   box-sizing: border-box;

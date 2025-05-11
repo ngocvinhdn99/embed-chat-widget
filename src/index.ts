@@ -5,12 +5,15 @@ import { marked } from "marked";
 import { widgetHTML } from "./html/widget-string";
 import { buttonHTML } from "./html/button-string";
 import css from "./widget.css";
+import { saveConversation, loadConversation } from "./storage/conversation";
 
 const WIDGET_BACKDROP_ID = "buildship-chat-widget__backdrop";
 const WIDGET_CONTAINER_ID = "buildship-chat-widget__container";
 const WIDGET_MESSAGES_HISTORY_CONTAINER_ID =
   "buildship-chat-widget__messages_history";
 const WIDGET_THINKING_BUBBLE_ID = "buildship-chat-widget__thinking_bubble";
+
+const WIDGET_CODE = "FbuDnSNYuZ";
 
 let toggleButton: HTMLElement | null;
 
@@ -20,11 +23,13 @@ export type WidgetConfig = {
   responseIsAStream: boolean;
   user: Record<any, any>;
   widgetTitle: string;
+  widgetDesc: string;
   greetingMessage: string | null;
   disableErrorAlert: boolean;
   closeOnOutsideClick: boolean;
   openOnLoad: boolean;
   positionToggleButton: "bottom-left" | "bottom-right";
+  widgetCode: string;
 };
 
 const renderer = new marked.Renderer();
@@ -36,17 +41,19 @@ renderer.link = (href, title, text) => {
 };
 
 const config: WidgetConfig = {
-  url: "https://case.doradora.vn/api/ask/dora",
+  url: 'http://localhost:3080',
   conversationId: null,
   responseIsAStream: true,
   user: {},
-  widgetTitle: "Chatbot by Vinh",
+  widgetTitle: '',
+  widgetDesc: '',
   greetingMessage: null,
   // greetingMessage: "Hello there! Here's a super long greeting.\n\nJust to see how you'd handle multiple lines and linebreaks.",
   disableErrorAlert: false,
   closeOnOutsideClick: true,
   openOnLoad: false,
   positionToggleButton: "bottom-right",
+  widgetCode: '',
   ...(window as any).buildShipChatWidget?.config,
 };
 
@@ -64,11 +71,66 @@ function positionToggleButton() {
   Object.assign(toggleButton.style, positionStyles[position]);
 }
 
+async function fetchConfig() {
+  // Fetch widget configuration
+  try {
+    const response = await fetch(`${config.url}/api/dora/widget/config`, {
+      headers: {
+        widgetCode: WIDGET_CODE,
+      },
+    });
+
+    if (response.ok) {
+      const { data } = await response.json();
+
+      // Update config with fetched data
+      Object.assign(config, {
+        widgetTitle: data.title,
+        positionToggleButton: data.position,
+        widgetDesc: data.desc,
+        widgetCode: data.code,
+      });
+
+      // Update CSS variables for custom colors
+      if (data.primaryColor) {
+        document.documentElement.style.setProperty(
+          "--buildship-chat-widget-primary-color",
+          data.primaryColor
+        );
+        document.documentElement.style.setProperty(
+          "--buildship-chat-widget-user-message-bg-color",
+          data.primaryColor
+        );
+      }
+    }
+  } catch (error) {
+    console.error("Failed to fetch widget configuration:", error);
+  }
+}
+
+function loadPreviousConversation() {
+  // Load previous conversation
+  const storedConversation = loadConversation();
+  if (storedConversation) {
+    config.conversationId = storedConversation.conversationId;
+    // Sort messages by timestamp and create message entries
+    storedConversation.messages
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .forEach((message) => {
+        createNewMessageEntry(message.text, message.timestamp, message.type);
+      });
+  }
+}
+
 async function init() {
   const styleElement = document.createElement("style");
   styleElement.innerHTML = css;
 
   document.head.insertBefore(styleElement, document.head.firstChild);
+
+  await fetchConfig();
+
+  loadPreviousConversation();
 
   // Slight delay to allow DOMContent to be fully loaded
   // (particularly for the button to be available in the `if (config.openOnLoad)` block below).
@@ -134,6 +196,7 @@ function open(e: Event) {
   document.body.appendChild(containerElement);
   containerElement.innerHTML = widgetHTML;
   containerElement.style.display = "block";
+  containerElement.classList.add("chat-widget-animate-in");
 
   const chatbotHeaderTitleText = document.createElement("span");
   chatbotHeaderTitleText.id = "buildship-chat-widget__title_text";
@@ -389,7 +452,6 @@ const handleStreamedDoraverseResponse = async (res: Response) => {
             if (parsedData.event === "on_run_step") {
               thinkingBubble.remove();
             } else if (parsedData.event === "on_message_delta") {
-              // Message content updates
               const content = parsedData.data?.delta?.content;
               if (Array.isArray(content) && content.length > 0) {
                 const textContent = content[0];
@@ -404,11 +466,23 @@ const handleStreamedDoraverseResponse = async (res: Response) => {
               }
             } else if (parsedData.final) {
               config.conversationId = parsedData?.conversation?.conversationId;
-              await streamResponseToMessageEntry(
-                parsedData?.responseMessage?.text,
-                ts,
-                "system"
-              );
+              const finalText =
+                parsedData?.responseMessage?.content?.[0]?.text ||
+                parsedData?.responseMessage?.text;
+              await streamResponseToMessageEntry(finalText, ts, "system");
+
+              // Save conversation when final is true
+              if (
+                parsedData.requestMessage &&
+                parsedData.responseMessage &&
+                parsedData.conversation?.conversationId
+              ) {
+                saveConversation(
+                  parsedData.conversation.conversationId,
+                  parsedData.requestMessage,
+                  parsedData.responseMessage,
+                );
+              }
             }
           } catch (err) {
             console.error("Error parsing message data:", err, parsedMsg);
@@ -439,20 +513,23 @@ async function submit(e: Event) {
 
   const requestHeaders = new Headers();
   requestHeaders.append("Content-Type", "application/json");
+  requestHeaders.append("widgetCode", config.widgetCode);
 
   const data = {
     ...config.user,
-    message: (target.elements as any).message.value,
+    text: (target.elements as any).message.value,
     conversationId: config.conversationId,
-    timestamp: Date.now(),
+    // timestamp: Date.now(),
+    clientTimestamp: new Date().toLocaleString("sv").replace(" ", "T"),
+    key: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   };
 
-  await createNewMessageEntry(data.message, data.timestamp, "user");
+  await createNewMessageEntry(data.text, Date.now(), "user");
   target.reset();
   messagesHistory.prepend(thinkingBubble);
 
   try {
-    let response = await fetch(config.url, {
+    let response = await fetch(`${config.url}/api/dora/widget/chat`, {
       method: "POST",
       headers: requestHeaders,
       body: JSON.stringify(data),
