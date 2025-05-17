@@ -1,4 +1,10 @@
-import { computePosition, flip, shift, autoUpdate } from "@floating-ui/dom";
+import {
+  computePosition,
+  flip,
+  shift,
+  autoUpdate,
+  offset,
+} from "@floating-ui/dom";
 import { createFocusTrap } from "focus-trap";
 import { marked } from "marked";
 
@@ -12,13 +18,12 @@ const WIDGET_CONTAINER_ID = "buildship-chat-widget__container";
 const WIDGET_MESSAGES_HISTORY_CONTAINER_ID =
   "buildship-chat-widget__messages_history";
 const WIDGET_THINKING_BUBBLE_ID = "buildship-chat-widget__thinking_bubble";
-
-const WIDGET_CODE = "FbuDnSNYuZ";
+const WIDGET_HEADER_CLOSE_ICON_ID = "buildship-chat-widget__header-close-icon";
 
 let toggleButton: HTMLElement | null;
 
 export type WidgetConfig = {
-  url: string;
+  baseUrl: string;
   conversationId: string | null;
   responseIsAStream: boolean;
   user: Record<any, any>;
@@ -41,19 +46,19 @@ renderer.link = (href, title, text) => {
 };
 
 const config: WidgetConfig = {
-  url: 'http://localhost:3080',
+  baseUrl: "",
   conversationId: null,
   responseIsAStream: true,
   user: {},
-  widgetTitle: '',
-  widgetDesc: '',
+  widgetTitle: "",
+  widgetDesc: "",
   greetingMessage: null,
   // greetingMessage: "Hello there! Here's a super long greeting.\n\nJust to see how you'd handle multiple lines and linebreaks.",
   disableErrorAlert: false,
   closeOnOutsideClick: true,
   openOnLoad: false,
   positionToggleButton: "bottom-right",
-  widgetCode: '',
+  widgetCode: "",
   ...(window as any).buildShipChatWidget?.config,
 };
 
@@ -71,12 +76,35 @@ function positionToggleButton() {
   Object.assign(toggleButton.style, positionStyles[position]);
 }
 
+function autoProtocol(url: string): string {
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+
+  const protocol =
+    url.startsWith("localhost") || url.startsWith("127.") ? "http" : "https";
+  return `${protocol}://${url}`;
+}
+
+function configDataFromCurrentScript() {
+  const scriptTag = document.querySelector(
+    "script[doraverse-chat-widget]"
+  ) as HTMLScriptElement | null;
+
+  const domain = scriptTag?.getAttribute("domain") || "";
+  const widgetId = scriptTag?.getAttribute("widgetId") || "";
+
+  Object.assign(config, {
+    widgetCode: widgetId,
+    baseUrl: autoProtocol(domain),
+  });
+}
+
 async function fetchConfig() {
-  // Fetch widget configuration
   try {
-    const response = await fetch(`${config.url}/api/dora/widget/config`, {
+    const response = await fetch(`${config.baseUrl}/api/dora/widget/config`, {
       headers: {
-        widgetCode: WIDGET_CODE,
+        widgetCode: config.widgetCode,
       },
     });
 
@@ -128,6 +156,7 @@ async function init() {
 
   document.head.insertBefore(styleElement, document.head.firstChild);
 
+  configDataFromCurrentScript();
   await fetchConfig();
 
   loadPreviousConversation();
@@ -198,13 +227,10 @@ function open(e: Event) {
   containerElement.style.display = "block";
   containerElement.classList.add("chat-widget-animate-in");
 
-  const chatbotHeaderTitleText = document.createElement("span");
-  chatbotHeaderTitleText.id = "buildship-chat-widget__title_text";
-  chatbotHeaderTitleText.textContent = config.widgetTitle;
   const chatbotHeaderTitle = document.getElementById(
     "buildship-chat-widget__title"
   )!;
-  chatbotHeaderTitle.appendChild(chatbotHeaderTitleText);
+  chatbotHeaderTitle.textContent = config.widgetTitle;
 
   const chatbotBody = document.getElementById("buildship-chat-widget__body")!;
   chatbotBody.prepend(messagesHistory);
@@ -216,7 +242,7 @@ function open(e: Event) {
   cleanup = autoUpdate(target, containerElement, () => {
     computePosition(target, containerElement, {
       placement: "top-start",
-      middleware: [flip(), shift({ crossAxis: true, padding: 8 })],
+      middleware: [offset(16), flip(), shift({ crossAxis: true, padding: 8 })],
       strategy: "fixed",
     }).then(({ x, y }) => {
       Object.assign(containerElement.style, {
@@ -227,6 +253,10 @@ function open(e: Event) {
   });
 
   trap.activate();
+
+  document
+    .getElementById(WIDGET_HEADER_CLOSE_ICON_ID)!
+    .addEventListener("click", close);
 
   if (config.closeOnOutsideClick) {
     document
@@ -480,7 +510,7 @@ const handleStreamedDoraverseResponse = async (res: Response) => {
                 saveConversation(
                   parsedData.conversation.conversationId,
                   parsedData.requestMessage,
-                  parsedData.responseMessage,
+                  parsedData.responseMessage
                 );
               }
             }
@@ -499,7 +529,7 @@ async function submit(e: Event) {
   e.preventDefault();
   const target = e.target as HTMLFormElement;
 
-  if (!config.url) {
+  if (!config.baseUrl) {
     console.error("Doraverse Chat Widget: No URL provided");
     if (!config.disableErrorAlert)
       alert("Could not send chat message: No URL provided");
@@ -529,7 +559,7 @@ async function submit(e: Event) {
   messagesHistory.prepend(thinkingBubble);
 
   try {
-    let response = await fetch(`${config.url}/api/dora/widget/chat`, {
+    let response = await fetch(`${config.baseUrl}/api/dora/widget/chat`, {
       method: "POST",
       headers: requestHeaders,
       body: JSON.stringify(data),

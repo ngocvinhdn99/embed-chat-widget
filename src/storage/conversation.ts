@@ -15,7 +15,7 @@ interface StoredConversation {
 export function saveConversation(
   conversationId: string,
   requestMessage: { text: string },
-  responseMessage: { text?: string; content: { type: string; text: string }[] }
+  responseMessage: { text?: string; content?: { type: string; text: string }[] }
 ) {
   try {
     const existingData = localStorage.getItem(CONVERSATION_KEY);
